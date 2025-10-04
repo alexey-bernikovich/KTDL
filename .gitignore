@@ -1,0 +1,5 @@
+/KTDL/bin/*
+/KTDL/obj/*
+/KTDL/config/secrets.json
+.vs/
+todo.txt
