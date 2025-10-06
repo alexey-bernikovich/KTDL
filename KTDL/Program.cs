@@ -1,15 +1,6 @@
 ﻿using KTDL;
-using KTDL.Executors;
-using KTDL.Pipeline;
-using KTDL.Steps;
 using KTDL.Orchestrator;
 using Microsoft.Extensions.Configuration;
-using System.Collections.Concurrent;
-using System.Text;
-using Telegram.Bot;
-using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
-using WTelegram.Types;
 
 var builder = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory())

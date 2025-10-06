@@ -17,7 +17,6 @@ namespace KTDL
         private IConfiguration _configuration;
         private JobPipelineOrchestrator _orchestrator;
 
-
         public BotController(IConfiguration configuration, JobPipelineOrchestrator orchestrator, WTelegram.Bot bot)
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
@@ -25,7 +24,6 @@ namespace KTDL
             _bot = bot;
 
             _bot.OnMessage += OnMessage;
-            _bot.OnUpdate += OnUpdate;
             _bot.OnError += OnError;            
         }
 
@@ -113,12 +111,6 @@ namespace KTDL
             }           
         }
 
-        //private Task SendMessageAsync(WTelegram.Bot bot, Telegram.Bot.Types.Chat chat, string text)
-        //{
-        //    bot.SendMessage(chat, text);
-        //    return Task.CompletedTask;
-        //}
-
         private async Task SendFileAsync(WTelegram.Bot bot, Telegram.Bot.Types.Message msg, 
             string path, string title, string year, string albumCover)
         {
@@ -154,22 +146,6 @@ namespace KTDL
                     fullTitle,
                     replyParameters: msg);
             }          
-        }
-
-        // TODO: Do I need it?
-        private Task OnUpdate(WTelegram.Types.Update update)
-        {
-            if (update.Type == UpdateType.Unknown)
-            {
-                //---> Show some update types that are unsupported by Bot API but can be handled via TLUpdate
-                if (update.TLUpdate is TL.UpdateDeleteChannelMessages udcm)
-                    Console.WriteLine($"{udcm.messages.Length} message(s) deleted in {_bot.Chat(udcm.channel_id)?.Title}");
-                else if (update.TLUpdate is TL.UpdateDeleteMessages udm)
-                    Console.WriteLine($"{udm.messages.Length} message(s) deleted in user chat or small private group");
-                else if (update.TLUpdate is TL.UpdateReadChannelOutbox urco)
-                    Console.WriteLine($"Someone read {_bot.Chat(urco.channel_id)?.Title} up to message {urco.max_id}");
-            }
-            return Task.CompletedTask;
         }
 
         private Task OnError(Exception exception, HandleErrorSource errorSource)

@@ -13,7 +13,7 @@ namespace KTDL.Executors
             CancellationToken cancellationToken)
         {
             var archivePath = Path.Combine(sourceDir, MakeFileNameSafe(arhiveName));
-            var files = Directory.GetFiles(sourceDir);
+            var files = Directory.GetFiles(sourceDir).Where(x => x.Contains(".mp3"));
 
             using (var zip = await ZipFile.OpenAsync(archivePath, ZipArchiveMode.Create))
             {

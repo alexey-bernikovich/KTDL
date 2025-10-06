@@ -20,9 +20,6 @@ namespace KTDL.Steps
         public async Task ExecuteAsync(PipelineContext context)
         {
             var files = context.Data["DownloadedFiles"] as List<string>;
-            // TODO: if there no any images -> skip this step
-            //var imageData = context.Data.ContainsKey("ImageData") ? context.Data["ImageData"] as byte[] : null;
-            var imgaeData = context.Data["ImageData"] as byte[];
 
             if(files == null || files.Count == 0)
             {
@@ -37,7 +34,7 @@ namespace KTDL.Steps
             int processedCount = 0;
             foreach (var file in files)
             {
-                await _fileProcessor.ProccessFileAsync(file, imgaeData, context.CancellationToken);
+                //await _fileProcessor.ProccessFileAsync(file, imgaeData, context.CancellationToken);
                 processedCount++;
 
                 if (context.OnProgress != null)

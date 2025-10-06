@@ -2,4 +2,5 @@
 /KTDL/obj/*
 /KTDL/config/secrets.json
 .vs/
+*.tmp
 todo.txt

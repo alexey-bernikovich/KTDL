@@ -18,13 +18,6 @@ namespace KTDL.Executors
     internal class SimpleFileDownloader : IFileDownloader
     {
         private int temp_max = 8;
-        private struct AlbumInfo
-        {
-            public string Title;
-            public string Year;
-            public string PublishedBy;
-            public List<string> SongPageLinks;
-        }
         private readonly HttpClient _http = new HttpClient()
         {
             Timeout = TimeSpan.FromSeconds(60)
@@ -68,27 +61,6 @@ namespace KTDL.Executors
                     }
                 }
             );
-
-            //foreach (var link in songPageLinks)
-            //{
-            //    try
-            //    {
-            //        var audioUrl = await GetAudioSrcFromSongPage(link);
-            //        if(string.IsNullOrEmpty(audioUrl))
-            //            continue;
-
-            //        var fileName = MakeSafeFileName(GetFileNameFromUrl(audioUrl));
-            //        var destPath = Path.Combine(outputDir, fileName);
-            //        await DownloadFileAsync(audioUrl, destPath);
-            //        donwloadedFiles.Add(destPath);
-
-            //        await onProgess?.Invoke(++donwloaded, songPageLinks.Count, "mp3");
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        Console.WriteLine($"Error downloading from {link}: {ex.Message}");
-            //    }
-            //}
             return donwloadedFiles;
         }
 
@@ -226,15 +198,6 @@ namespace KTDL.Executors
 
                     links.Add(MakeAbsoluteUrl(pageUrl, href));
                 });
-
-        //foreach (var a in anchors)
-        //    {
-        //        var href = a.GetAttributeValue("href", null);
-        //        if (string.IsNullOrEmpty(href))
-        //            continue;
-
-        //        links.Add(MakeAbsoluteUrl(pageUrl, href));
-        //    }
             return links.Distinct().ToList();
         }
 

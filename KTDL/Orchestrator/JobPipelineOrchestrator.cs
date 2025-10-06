@@ -28,7 +28,7 @@ namespace KTDL.Orchestrator
 
             _jobPipeline = new JobPipeline()
                 .AddStep(() => new DownloadStep(downloader))
-                .AddStep(() => new ProcessFilesStep(processor))
+                //.AddStep(() => new ProcessFilesStep(processor))
                 .AddStep(() => new ArchiveStep(archiver));
 
             _jobManager = new JobManager(workerCount: 5);
@@ -58,8 +58,7 @@ namespace KTDL.Orchestrator
             context.CancellationToken = AddUserCancellation(context.UserId).Token;
             context.Data = new Dictionary<string, object>
             {
-                ["Url"] = url,
-                ["ImageData"] = new byte[] { 0, 1 }
+                ["Url"] = url
             };
             context.OnFinished += async (userId, result) =>
             {
@@ -70,6 +69,7 @@ namespace KTDL.Orchestrator
                 var archivePath = archivePathObj as string;
 
                 File.Delete(archivePath);
+                Console.WriteLine($"Finished {context.WorkflowId}");
             };
 
             await _jobManager.EnqueueJob(async () =>
