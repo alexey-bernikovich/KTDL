@@ -1,37 +1,37 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO.Compression;
-using System.Text;
+﻿using System.IO.Compression;
 
 namespace KTDL.Executors
 {
     internal class SimpleArchiver : IArchiver
     {
+        private CompressionLevel _compressionLevel = CompressionLevel.Fastest;
+
+        // TODO: cancellationToken is not used - fix this
         public async Task<string> CreateArchiveAsync(
             string sourceDir, 
             string arhiveName, 
             CancellationToken cancellationToken)
         {
-            // TODO: Issue: duplicate names. Need to put in folder with jobid
-            var archivePath = Path.Combine("archives", arhiveName);
-            Directory.CreateDirectory("archives");
+            var archivePath = Path.Combine(sourceDir, MakeFileNameSafe(arhiveName));
+            var files = Directory.GetFiles(sourceDir);
 
-            // TODO: Too slow. Replace with SharpZipLib or DotNetZib
-            using (var zip = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+            using (var zip = await ZipFile.OpenAsync(archivePath, ZipArchiveMode.Create))
             {
-                foreach (var file in Directory.GetFiles(sourceDir))
+                foreach (var file in files)
                 {
-                    zip.CreateEntryFromFile(file, Path.GetFileName(file));
+                    zip.CreateEntryFromFile(file, Path.GetFileName(file), _compressionLevel);
                 }
             }
-
             return archivePath;
         }
 
-        private void CreateArhive(string sourceDir)
+        private string MakeFileNameSafe(string name)
         {
-
+            foreach (var c in Path.GetInvalidFileNameChars())
+            {
+                name = name.Replace(c, '_');
+            }
+            return name.Trim();
         }
     }
 }
