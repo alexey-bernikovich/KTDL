@@ -5,6 +5,7 @@ using KTDL.Steps;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Concurrent;
 using Microsoft.VisualBasic;
+using KTDL.Common;
 
 
 namespace KTDL.Orchestrator
@@ -65,7 +66,7 @@ namespace KTDL.Orchestrator
                 TryRemoveUserCancellation(userId);
 
                 // TODO: Check if archive even exists
-                result.Data.TryGetValue("ArchivePath", out var archivePathObj);
+                result.Data.TryGetValue(PipelineContextDataNames.ARCHIVE_PATH, out var archivePathObj);
                 var archivePath = archivePathObj as string;
 
                 File.Delete(archivePath);

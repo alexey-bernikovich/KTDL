@@ -1,4 +1,5 @@
-﻿using KTDL.Orchestrator;
+﻿using KTDL.Common;
+using KTDL.Orchestrator;
 using KTDL.Pipeline;
 using Microsoft.Extensions.Configuration;
 using Telegram.Bot;
@@ -44,26 +45,27 @@ namespace KTDL
 
                 OnCompleted = async (result) =>
                 {
-                    if (result.Success && result.Data.TryGetValue("ArchivePath", out var archivePathObj))
+                    if (result.Success && result.Data.TryGetValue(
+                        PipelineContextDataNames.ARCHIVE_PATH, out var archivePathObj))
                     {
                         var archivePath = archivePathObj as string;
 
                         string? albumTitle = string.Empty;
-                        if (result.Data.ContainsKey("AlbumTitle"))
+                        if (result.Data.ContainsKey(PipelineContextDataNames.ALBUM_TITLE))
                         {
-                            albumTitle = result.Data["AlbumTitle"].ToString();
+                            albumTitle = result.Data[PipelineContextDataNames.ALBUM_TITLE].ToString();
                         }
 
                         string? albumYear = string.Empty;
-                        if (result.Data.ContainsKey("AlbumYear"))
+                        if (result.Data.ContainsKey(PipelineContextDataNames.ALBUM_YEAR))
                         {
-                            albumYear = result.Data["AlbumYear"].ToString();
+                            albumYear = result.Data[PipelineContextDataNames.ALBUM_YEAR].ToString();
                         }
 
                         string? imagePath = string.Empty;
-                        if (result.Data.ContainsKey("AlbumCover"))
+                        if (result.Data.ContainsKey(PipelineContextDataNames.ALBUM_COVER))
                         {
-                            imagePath = result.Data["AlbumCover"].ToString();
+                            imagePath = result.Data[PipelineContextDataNames.ALBUM_COVER].ToString();
                         }
 
                         await SendFileAsync(_bot, msg, archivePath,

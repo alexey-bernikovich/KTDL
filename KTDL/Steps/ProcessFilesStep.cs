@@ -1,4 +1,5 @@
-﻿using KTDL.Executors;
+﻿using KTDL.Common;
+using KTDL.Executors;
 using KTDL.Pipeline;
 using System;
 using System.Collections.Generic;
@@ -19,7 +20,7 @@ namespace KTDL.Steps
 
         public async Task ExecuteAsync(PipelineContext context)
         {
-            var files = context.Data["DownloadedFiles"] as List<string>;
+            var files = context.Data[PipelineContextDataNames.DOWNLOADED_FILES] as List<string>;
 
             if(files == null || files.Count == 0)
             {

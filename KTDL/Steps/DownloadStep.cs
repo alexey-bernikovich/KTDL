@@ -1,4 +1,5 @@
-﻿using KTDL.Executors;
+﻿using KTDL.Common;
+using KTDL.Executors;
 using KTDL.Pipeline;
 using System;
 using System.Collections.Generic;
@@ -19,7 +20,7 @@ namespace KTDL.Steps
 
         public async Task ExecuteAsync(PipelineContext context)
         {
-            var url = context.Data["Url"] as string;
+            var url = context.Data[PipelineContextDataNames.URL] as string;
 
             if (context.OnProgress != null)
             {
@@ -40,7 +41,7 @@ namespace KTDL.Steps
                 context.CancellationToken);
 
             // TO-DO: Check if files is null
-            context.Data["DownloadedFiles"] = files;
+            context.Data[PipelineContextDataNames.DOWNLOADED_FILES] = files;
 
             var albumCover = await _downloader.GetAlbumCoverAsync(
                 url,
@@ -49,7 +50,7 @@ namespace KTDL.Steps
 
             if (albumCover is not null)
             {
-                context.Data["AlbumCover"] = albumCover;
+                context.Data[PipelineContextDataNames.ALBUM_COVER] = albumCover;
             }
 
             var infoDict = await _downloader.GetAlbumInfoAsync(

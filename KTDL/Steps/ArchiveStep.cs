@@ -1,4 +1,5 @@
-﻿using KTDL.Executors;
+﻿using KTDL.Common;
+using KTDL.Executors;
 using KTDL.Pipeline;
 using System;
 using System.Collections.Generic;
@@ -25,9 +26,9 @@ namespace KTDL.Steps
             }
 
             var archiveName = $"{context.WorkflowId}.zip";
-            if (context.Data.ContainsKey("AlbumTitle"))
+            if (context.Data.ContainsKey(PipelineContextDataNames.ALBUM_TITLE))
             {
-                archiveName = $"{context.Data["AlbumTitle"]}.zip";
+                archiveName = $"{context.Data[PipelineContextDataNames.ALBUM_TITLE]}.zip";
             }
                 
             var archivePath = await _archiver.CreateArchiveAsync(
@@ -35,7 +36,7 @@ namespace KTDL.Steps
                 archiveName, 
                 context.CancellationToken);
 
-            context.Data["ArchivePath"] = archivePath;
+            context.Data[PipelineContextDataNames.ARCHIVE_PATH] = archivePath;
         }
     }
 }
