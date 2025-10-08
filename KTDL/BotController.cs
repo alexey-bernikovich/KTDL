@@ -2,6 +2,8 @@
 using KTDL.Orchestrator;
 using KTDL.Pipeline;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using System.Net.NetworkInformation;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
@@ -14,15 +16,18 @@ namespace KTDL
 {
     internal class BotController
     {
-        private WTelegram.Bot _bot;
+        private readonly ILogger<BotController> _logger;        
         private IConfiguration _configuration;
+        private WTelegram.Bot _bot;
         private JobPipelineOrchestrator _orchestrator;
 
-        public BotController(IConfiguration configuration, JobPipelineOrchestrator orchestrator, WTelegram.Bot bot)
+        public BotController(ILoggerFactory loggerFactory, IConfiguration configuration,
+            WTelegram.Bot bot, JobPipelineOrchestrator orchestrator)
         {
+            _logger = loggerFactory.CreateLogger<BotController>();
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _orchestrator = orchestrator;
             _bot = bot;
+            _orchestrator = orchestrator;            
 
             _bot.OnMessage += OnMessage;
             _bot.OnError += OnError;            
@@ -31,7 +36,7 @@ namespace KTDL
         // TODO: Make it in the right way
         private async Task TesLinkHandle(WTelegram.Types.Message msg, string url)
         {
-            Console.WriteLine($"Start workflow for ${msg.From.Username} - {url}");
+            _logger.LogInformation("Recived task for {Username} - {Url}.", msg.From.Username, url);
             var context = new PipelineContext
             {
                 UserId = msg.From.Id,
@@ -39,7 +44,7 @@ namespace KTDL
 
                 OnProgress = async (status) =>
                 {
-                    Console.WriteLine(status);
+                    _logger.LogInformation($"{status}.");
                     //await _bot.SendMessage(msg.Chat, status, replyParameters: msg);
                 },
 
@@ -68,9 +73,10 @@ namespace KTDL
                             imagePath = result.Data[PipelineContextDataNames.ALBUM_COVER].ToString();
                         }
 
+                        _logger.LogInformation("Sending an archive {Path} to {Username}...", archivePath, msg.From.Username);
                         await SendFileAsync(_bot, msg, archivePath,
                             albumTitle, albumYear, imagePath);
-                        Console.WriteLine($"Sendid archive {archivePath} to {msg.From.Username}");
+                        _logger.LogInformation("Archive {Path} was sent to {Username}!", archivePath, msg.From.Username);
                     }
                 }
             };
@@ -89,8 +95,19 @@ namespace KTDL
         // TODO: double check the reults of asynchronous + job manager
         private async Task OnMessage(WTelegram.Types.Message msg, UpdateType type)
         {
-            if (msg is null || msg.Text is null)
-                throw new Exception("Received message is null");
+            if(msg is null)
+            {
+                throw new Exception("Received message obj is null");
+            }
+
+            _logger.LogInformation("Recived message from {Username}.", msg.From.Username);
+
+            if (msg.Text is null)
+            {
+                throw new Exception("Received text is null");
+            }
+
+            _logger.LogInformation("Message: {Text}.", msg.Text); 
 
             var text = msg.Text.ToLower();
 
@@ -101,8 +118,7 @@ namespace KTDL
                     await _bot.SendMessage(msg.Chat, $"Hello there, {msg.From.Username}");
                     break;
 
-                case var url when url.StartsWith("https://downloads.khinsider.com/game-soundtracks/album/"):
-                    Console.WriteLine("Got a link to khinsider");
+                case var url when url.StartsWith("https://downloads.khinsider.com/game-soundtracks/album/"):                    
                     await TesLinkHandle(msg, url);
                     break;
 
@@ -132,7 +148,6 @@ namespace KTDL
             if (!string.IsNullOrEmpty(albumCover))
             {
                 await using var thumgnalStream = File.OpenRead(albumCover);
-
                 await bot.SendDocument(
                     msg.Chat,
                     stream,
@@ -147,12 +162,13 @@ namespace KTDL
                     stream,
                     fullTitle,
                     replyParameters: msg);
-            }          
+            }
         }
 
         private Task OnError(Exception exception, HandleErrorSource errorSource)
         {
-            return Console.Error.WriteLineAsync(exception.ToString());
+            _logger.LogError(exception.Message);
+            return Task.CompletedTask;
         }
     }
 }

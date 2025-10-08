@@ -1,20 +1,21 @@
-﻿using KTDL.Common;
-using KTDL.Executors;
-using KTDL.Pipeline;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using KTDL.Common;
+using KTDL.Executors;
+using KTDL.Pipeline;
+using Microsoft.Extensions.Logging;
 
 namespace KTDL.Steps
 {
     internal class DownloadStep : IPipelineStep
     {
+        private readonly ILogger<SimpleFileDownloader> _logger;
         private readonly IFileDownloader _downloader;
 
-        public DownloadStep() : this(new SimpleFileDownloader()) { }
-
-        public DownloadStep(IFileDownloader donwloader)
+        public DownloadStep(ILoggerFactory loggerFactory, IFileDownloader donwloader)
         {
+            _logger = loggerFactory.CreateLogger<SimpleFileDownloader>();
             _downloader = donwloader ?? throw new ArgumentNullException(nameof(donwloader));
         }
 
@@ -27,15 +28,17 @@ namespace KTDL.Steps
                 await context.OnProgress("Starting download...");
             }
 
+            _logger.LogInformation($"Calling download album files method.");
             var files = await _downloader.DownloadAlbumFilesAsync(
                 url,
                 context.TempDirectory,
                 async (donwloaded, total, itemType) =>
                 {
+                    _logger.LogInformation("Downloaded {File} of {Total} {Type} file(s) ({Percent}%)",
+                            donwloaded, total, itemType, (total > 0 ? (donwloaded * 100 / total) : 0));
                     if (context.OnProgress != null)
                     {
-                        await context.OnProgress($"Downloaded {donwloaded} of " +
-                            $"{total} {itemType} file(s) ({(total > 0 ? (donwloaded * 100 / total) : 0)}%)");
+                        // TODO: Implement user inform                                 
                     }
                 },
                 context.CancellationToken);
@@ -43,6 +46,7 @@ namespace KTDL.Steps
             // TO-DO: Check if files is null
             context.Data[PipelineContextDataNames.DOWNLOADED_FILES] = files;
 
+            _logger.LogInformation($"Calling get album cover method.");
             var albumCover = await _downloader.GetAlbumCoverAsync(
                 url,
                 context.TempDirectory,
@@ -53,14 +57,14 @@ namespace KTDL.Steps
                 context.Data[PipelineContextDataNames.ALBUM_COVER] = albumCover;
             }
 
+            _logger.LogInformation($"Calling download album info method.");
             var infoDict = await _downloader.GetAlbumInfoAsync(
                 url,
                 async (donwloaded, total, itemType) =>
                 {
                     if (context.OnProgress != null)
                     {
-                        await context.OnProgress($"Downloaded {donwloaded} of " +
-                            $"{total} {itemType} ({(total > 0 ? (donwloaded * 100 / total) : 0)}%)");
+                        // TODO: Implement user inform
                     }
                 },
                 context.CancellationToken);

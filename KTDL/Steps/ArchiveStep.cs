@@ -1,20 +1,21 @@
-﻿using KTDL.Common;
-using KTDL.Executors;
-using KTDL.Pipeline;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using KTDL.Common;
+using KTDL.Executors;
+using KTDL.Pipeline;
+using Microsoft.Extensions.Logging;
 
 namespace KTDL.Steps
 {
     internal class ArchiveStep : IPipelineStep
     {
+        private readonly ILogger<ArchiveStep> _logger;
         private readonly IArchiver _archiver;
 
-        public ArchiveStep() : this(new SimpleArchiver()) { }
-
-        public ArchiveStep(IArchiver archiver)
+        public ArchiveStep(ILoggerFactory loggerFactory, IArchiver archiver)
         {
+            _logger = loggerFactory.CreateLogger<ArchiveStep>();
             _archiver = archiver ?? throw new ArgumentNullException(nameof(archiver));
         }
 
@@ -30,7 +31,7 @@ namespace KTDL.Steps
             {
                 archiveName = $"{context.Data[PipelineContextDataNames.ALBUM_TITLE]}.zip";
             }
-                
+
             var archivePath = await _archiver.CreateArchiveAsync(
                 context.TempDirectory, 
                 archiveName, 

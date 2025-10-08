@@ -1,12 +1,16 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System.Text;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using System.Text;
 
 
 namespace KTDL
 {
     internal class BotClient
     {
+        private readonly ILogger<BotClient> _logger;
         private readonly IConfiguration _configuration;
 
         public WTelegram.Bot TelegramBot;
@@ -15,11 +19,13 @@ namespace KTDL
         private SqliteConnection _sqliteConnection;
 
 
-        public BotClient(IConfiguration configuration)
+        public BotClient(ILoggerFactory loggerFactory, IConfiguration configuration)
         {
+            _logger = loggerFactory.CreateLogger<BotClient>();
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 
-            _wTelegramLogs = new StreamWriter("WTelegramBot.log", true, Encoding.UTF8) { AutoFlush = true };
+            // TODO: Get from config file if I want any WTelegram logs
+            _wTelegramLogs = new StreamWriter(@"logs\WTelegramBot.log", true, Encoding.UTF8) { AutoFlush = true };
             WTelegram.Helpers.Log = (lvl, str) => _wTelegramLogs.WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{"TDIWE!"[lvl]}] {str}");
         }
 
@@ -37,14 +43,19 @@ namespace KTDL
             _sqliteConnection = new SqliteConnection(@"Data Source=WTelegramBot.sqlite");
             TelegramBot = new WTelegram.Bot(botToken, apiId, apiHash, _sqliteConnection);
 
+            // TODO: set from the config file
             await TelegramBot.DropPendingUpdates();
             TelegramBot.WantUnknownTLUpdates = true;
+
         }
 
         public async Task Close()
         {
+            _logger.LogInformation($"Closing Telegram Bot client.");
             await TelegramBot.Close();
+            _logger.LogInformation($"Closing SQLite connectionm.");
             await _sqliteConnection.CloseAsync();
+            _logger.LogInformation($"Closing Telegram logs.");
             _wTelegramLogs.Close();            
         }
     }

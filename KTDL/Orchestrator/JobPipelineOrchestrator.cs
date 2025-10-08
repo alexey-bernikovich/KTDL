@@ -6,38 +6,43 @@ using Microsoft.Extensions.Configuration;
 using System.Collections.Concurrent;
 using Microsoft.VisualBasic;
 using KTDL.Common;
+using Microsoft.Extensions.Logging;
 
 
 namespace KTDL.Orchestrator
 {
     internal class JobPipelineOrchestrator
     {
-        private IConfiguration _configuration;
+        private readonly ILogger<JobPipelineOrchestrator> _logger;
+        private IConfiguration _configuration;        
         private JobManager _jobManager;
         private JobPipeline _jobPipeline;
         private ConcurrentDictionary<long, CancellationTokenSource> _userCancellations;
 
-        public JobPipelineOrchestrator(IConfiguration configuration)
+        public JobPipelineOrchestrator(ILoggerFactory loggerFactory, IConfiguration configuration)
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _logger = loggerFactory.CreateLogger<JobPipelineOrchestrator>();
+            _userCancellations = new ConcurrentDictionary<long, CancellationTokenSource>();            
 
-            _userCancellations = new ConcurrentDictionary<long, CancellationTokenSource>();
+            var downloader = new SimpleFileDownloader(loggerFactory);
+           // var processor = new SimpleFileProcessor();
+            var archiver = new SimpleArchiver(loggerFactory);
 
-            var downloader = new SimpleFileDownloader();
-            var processor = new SimpleFileProcessor();
-            var archiver = new SimpleArchiver();
-
-            _jobPipeline = new JobPipeline()
-                .AddStep(() => new DownloadStep(downloader))
+            _jobPipeline = new JobPipeline(loggerFactory)
+                .AddStep(() => new DownloadStep(loggerFactory, downloader))
                 //.AddStep(() => new ProcessFilesStep(processor))
-                .AddStep(() => new ArchiveStep(archiver));
+                .AddStep(() => new ArchiveStep(loggerFactory, archiver));
 
-            _jobManager = new JobManager(workerCount: 5);
+            // TODO: Get that number from config file
+            _jobManager = new JobManager(5);
         }
 
         public CancellationTokenSource AddUserCancellation(long userId)
-        {
-            return _userCancellations[userId] = new CancellationTokenSource();
+        {            
+            var cancellationToken = _userCancellations[userId] = new CancellationTokenSource();
+            _logger.LogInformation("Add used cancellation {UserId}", userId);
+            return cancellationToken;
         }
 
         public void TryRemoveUserCancellation(long userId)
@@ -45,12 +50,15 @@ namespace KTDL.Orchestrator
             if (_userCancellations.TryRemove(userId, out var cts))
             {
                 cts.Dispose();
+                _logger.LogInformation("Removed used cancellation {UsedId}", userId);
             }
         }
 
         public async Task InitJob(PipelineContext context, string url)
         {
             Guid workflowId = Guid.NewGuid();
+            _logger.LogInformation("Initialization job {JobId}.", workflowId);
+            //TODO: Add temp path from config file
             var tempDir = Path.Combine("temp", workflowId.ToString());
             Directory.CreateDirectory(tempDir);
 
@@ -70,7 +78,7 @@ namespace KTDL.Orchestrator
                 var archivePath = archivePathObj as string;
 
                 File.Delete(archivePath);
-                Console.WriteLine($"Finished {context.WorkflowId}");
+                _logger.LogInformation("Finished job {JobId}", context.WorkflowId);
             };
 
             await _jobManager.EnqueueJob(async () =>

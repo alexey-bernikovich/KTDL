@@ -1,6 +1,9 @@
 ﻿using KTDL;
 using KTDL.Orchestrator;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Sinks.SystemConsole.Themes;
 
 var builder = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory())
@@ -9,22 +12,47 @@ var builder = new ConfigurationBuilder()
 
 IConfiguration configuration = builder.Build();
 
-JobPipelineOrchestrator orchestrator = new JobPipelineOrchestrator(configuration);
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console(
+        theme: AnsiConsoleTheme.Code,
+        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File("logs/app.log",
+        rollingInterval: RollingInterval.Day,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
 
-BotClient client = new BotClient(configuration);
-client.Connect().Wait();
+var loggerFactory = LoggerFactory.Create(builder =>
+{
+    builder.AddSerilog();
+});
+var logger = loggerFactory.CreateLogger<Program>();
 
-orchestrator.StartWorkflow();
+try
+{
+    JobPipelineOrchestrator orchestrator = new JobPipelineOrchestrator(loggerFactory, configuration);
 
-BotController botController = new BotController(configuration, orchestrator, client.TelegramBot);
+    BotClient client;
+    client = new BotClient(loggerFactory, configuration);
+    client.Connect().Wait();
 
-Console.WriteLine("___________________________________________________\n");
-Console.WriteLine("I'm listening now. Send me a command. Or press Escape to exit");
+    orchestrator.StartWorkflow();
 
-// TODO: Implement better shutdown handling
-while (Console.ReadKey(true).Key != ConsoleKey.Escape) { }
-Console.WriteLine("Exiting...");
+    BotController botController = new BotController(loggerFactory, configuration, client.TelegramBot, orchestrator);
 
-orchestrator.StopWorkflow().Wait();
-client.Close().Wait();
+    logger.LogInformation($"Bot has been launched");
 
+    // TODO: Implement better shutdown handling
+    while (Console.ReadKey(true).Key != ConsoleKey.Escape) { }
+
+    logger.LogInformation($"Bot shutdown started...");
+
+    orchestrator.StopWorkflow().Wait();
+    client.Close().Wait();
+
+    logger.LogInformation($"Closing logs");
+    Log.CloseAndFlush();
+}
+catch(Exception e)
+{
+    logger.LogError(e.Message);
+}

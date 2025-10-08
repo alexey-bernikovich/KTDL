@@ -1,4 +1,6 @@
 ﻿using HtmlAgilityPack;
+using KTDL.Orchestrator;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -17,11 +19,17 @@ namespace KTDL.Executors
     // TODO: require refactoring
     internal class SimpleFileDownloader : IFileDownloader
     {
+        private readonly ILogger<SimpleFileDownloader> _logger;
         private int temp_max = 8;
         private readonly HttpClient _http = new HttpClient()
         {
             Timeout = TimeSpan.FromSeconds(60)
         };
+
+        public SimpleFileDownloader(ILoggerFactory loggerFactory)
+        {
+            _logger = loggerFactory.CreateLogger<SimpleFileDownloader>();
+        }
 
         public async Task<List<string>> DownloadAlbumFilesAsync(
             string url,
@@ -50,14 +58,19 @@ namespace KTDL.Executors
 
                         var fileName = MakeSafeFileName(GetFileNameFromUrl(audioUrl));
                         var destPath = Path.Combine(outputDir, fileName);
+
                         await DownloadFileAsync(audioUrl, destPath);
                         donwloadedFiles.Add(destPath);
 
-                        await onProgess?.Invoke(++donwloaded, songPageLinks.Count, "mp3");
+                        _logger.LogInformation("Downloaded {File} of {Total} mp3 file(s) ({Percent}%)",
+                            ++donwloaded, songPageLinks.Count, 
+                            (songPageLinks.Count > 0 ? (donwloaded * 100 / songPageLinks.Count) : 0));
+
+                        await onProgess?.Invoke(donwloaded, songPageLinks.Count, "mp3");
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error downloading from {link}: {ex.Message}");
+                        _logger.LogError("Error downloading from {Link}: {Message}", link, ex.Message);
                     }
                 }
             );
@@ -71,6 +84,7 @@ namespace KTDL.Executors
         {
             string? imageDestPath = null;
             string albumImageUrl = await GetAlbumImageUrl(url);
+
             if (!string.IsNullOrEmpty(albumImageUrl))
             {
                 try
@@ -80,11 +94,11 @@ namespace KTDL.Executors
                     imageDestPath = Path.Combine(outputDir, imageFileName);
 
                     await DownloadFileAsync(albumImageUrl, imageDestPath);
-                    Console.WriteLine("Donwloaded album cover");
+                    _logger.LogInformation($"Downloaded album cover");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error downloading album image from {albumImageUrl}: {ex.Message}");
+                    _logger.LogError("Error downloading album image from {Url}: {Message}", albumImageUrl, ex.Message);
                 }
             }
             return imageDestPath;
@@ -100,12 +114,12 @@ namespace KTDL.Executors
 
             if (string.IsNullOrEmpty(slug))
             {
-                Console.WriteLine("Can't get any slugs from url");
+                _logger.LogError("Can't get any slugs from url");
                 return result;
             }
 
             string infoUrl = $"https://vgmtreasurechest.com/soundtracks/{slug}/khinsider.info.txt";
-            Console.WriteLine($"Created info URL: {infoUrl}");
+            _logger.LogInformation("Created info URL: {Url}", infoUrl);
 
             string txt = await _http.GetStringAsync(infoUrl);
             int getCount = 0;
@@ -114,14 +128,18 @@ namespace KTDL.Executors
             if (TryGetValue(txt, @"(?mi)^Name:\s*(.+)$", out title))
             {
                 result["AlbumTitle"] = title;
-                await onProgress?.Invoke(++getCount, 2, "info");
+                _logger.LogInformation("Downloaded {File} of {Total} info file(s)",
+                    ++getCount, 2);
+                await onProgress?.Invoke(getCount, 2, "info");
             }
 
             string? year;
             if (TryGetValue(txt, @"(?mi)^Year:\s*(.+)$", out year))
             {
                 result["AlbumYear"] = year;
-                await onProgress?.Invoke(++getCount, 2, "info");
+                _logger.LogInformation("Downloaded {File} of {Total} info file(s)",
+                    ++getCount, 2);
+                await onProgress?.Invoke(getCount, 2, "info");
             }
 
             return result;
@@ -176,7 +194,7 @@ namespace KTDL.Executors
             var table = doc.DocumentNode.SelectSingleNode("//table[@id='songlist']");
             if (table == null)
             {
-                Console.WriteLine("Table \"songlist\" not found on page.");
+                _logger.LogError("Table \"songlist\" not found on page.");
                 return links.ToList();
             }
 
@@ -210,21 +228,21 @@ namespace KTDL.Executors
             var div = doc.DocumentNode.SelectSingleNode("//div[contains(@class,'albumImage')]");
             if (div == null)
             {
-                Console.WriteLine("Album image not found on page.");
+                _logger.LogWarning("Album image not found on page.");
                 return null;
             }
 
             var imageLink = div.SelectSingleNode(".//a[@href]");
             if (imageLink == null)
             {
-                Console.WriteLine("Link to album image not found.");
+                _logger.LogError("Link to album image not found.");
                 return null;
             }
 
             var href = imageLink.GetAttributeValue("href", null);
             if (string.IsNullOrEmpty(href))
             {
-                Console.WriteLine("Link to album image not parsed.");
+                _logger.LogError("Link to album image not parsed.");
                 return null;
             }
 
@@ -255,7 +273,8 @@ namespace KTDL.Executors
             resp.EnsureSuccessStatusCode();
 
             using var contentStream = await resp.Content.ReadAsStreamAsync();
-            using var fileStream = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, useAsync: true);
+            using var fileStream = new FileStream(destPath, FileMode.Create, FileAccess.Write,
+                FileShare.None, 8192, useAsync: true);
             await contentStream.CopyToAsync(fileStream);
         }
 
@@ -276,6 +295,7 @@ namespace KTDL.Executors
             }
             catch
             {
+                // TODO: Replace with default name
                 return "downloaded.mp3";
             }
         }
@@ -297,14 +317,14 @@ namespace KTDL.Executors
             var audioNode = doc.DocumentNode.SelectSingleNode("//audio[@id='audio' and @src]");
             if (audioNode == null)
             {
-                //Console.WriteLine($"Audio element with id='audio' not found on page: {songPageUrl}");
+                _logger.LogError("Audio element with id='audio' not found on page: {Url}", songPageUrl);
                 return null;
             }
 
             var src = audioNode.GetAttributeValue("src", null);
             if(string.IsNullOrEmpty(src))
             {
-                //Console.WriteLine($"Audio element does not have a valid 'src' attribute on page: {songPageUrl}");
+                _logger.LogError("Audio element does not have a valid 'src' attribute on page: {Url}", songPageUrl);
                 return null;
             }
             return MakeAbsoluteUrl(songPageUrl, src);

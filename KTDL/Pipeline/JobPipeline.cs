@@ -1,4 +1,6 @@
-﻿using System;
+﻿using KTDL.Orchestrator;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -6,7 +8,13 @@ namespace KTDL.Pipeline
 {
     internal class JobPipeline
     {
+        private readonly ILogger<JobPipeline> _logger;
         private readonly List<Func<IPipelineStep>> _stepsFactories = new List<Func<IPipelineStep>>();
+
+        public JobPipeline(ILoggerFactory loggerFactory)
+        {
+            _logger = loggerFactory.CreateLogger<JobPipeline>();
+        }
 
         public JobPipeline AddStep<TStep>() where TStep : IPipelineStep, new()
         {
@@ -22,6 +30,7 @@ namespace KTDL.Pipeline
 
         public async Task<PipelineResult> ExecuteAsync(PipelineContext pipelineContext)
         {
+            _logger.LogInformation("Starting job {JobId}.", pipelineContext.WorkflowId);
             var result = new PipelineResult { Success = true };
 
             try
@@ -77,11 +86,12 @@ namespace KTDL.Pipeline
                 if (Directory.Exists(tempDirectory))
                 {
                     Directory.Delete(tempDirectory, true);
+                    _logger.LogInformation("Deleted {Folder}.", tempDirectory);
                 }
             }
             catch
             {
-                // TODO: Log cleanup failure if necessary
+                _logger.LogError("Error occurred while trying to delete {Folder} folder.", tempDirectory);
             }
         }
     }
