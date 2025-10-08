@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace KTDL.Pipeline
+﻿namespace KTDL.Pipeline
 {
     internal class PipelineResult
     {

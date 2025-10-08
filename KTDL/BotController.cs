@@ -3,14 +3,8 @@ using KTDL.Orchestrator;
 using KTDL.Pipeline;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System.Net.NetworkInformation;
-using Telegram.Bot;
 using Telegram.Bot.Polling;
-using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using TL;
-using WTelegram;
-using WTelegram.Types;
 
 namespace KTDL
 {

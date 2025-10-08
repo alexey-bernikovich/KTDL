@@ -1,16 +1,8 @@
 ﻿using HtmlAgilityPack;
-using KTDL.Orchestrator;
 using Microsoft.Extensions.Logging;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Net;
-using System.Net.Http;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Xml;
-using static System.Net.WebRequestMethods;
 
 namespace KTDL.Executors
 {

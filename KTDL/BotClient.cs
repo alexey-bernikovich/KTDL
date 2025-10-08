@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
-using System.Text;
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Text;
