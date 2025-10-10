@@ -1,4 +1,5 @@
 ﻿using KTDL.Common;
+using KTDL.Common.StringConst;
 using KTDL.Executors;
 using KTDL.Pipeline;
 using Microsoft.Extensions.Logging;
@@ -22,20 +23,28 @@ namespace KTDL.Steps
 
             if (context.OnProgress != null)
             {
-                await context.OnProgress("Starting download...");
+                await context.OnProgress(new ProgressInfo 
+                { 
+                    Message = UserNotificationMessages.DOWNLOAD_STARTED,
+                    Stage = PipelineStepStage.Initialized
+                });
             }
 
             _logger.LogInformation($"Calling download album files method.");
             var files = await _downloader.DownloadAlbumFilesAsync(
                 url,
                 context.TempDirectory,
-                async (donwloaded, total, itemType) =>
-                {
-                    _logger.LogInformation("Downloaded {File} of {Total} {Type} file(s) ({Percent}%)",
-                            donwloaded, total, itemType, (total > 0 ? (donwloaded * 100 / total) : 0));
+                async (donwloaded, total) =>
+                {                    
                     if (context.OnProgress != null)
                     {
-                        // TODO: Implement user inform                                 
+                        await context.OnProgress(new ProgressInfo
+                        {
+                            Message = UserNotificationMessages.DOWNLOAD_PROCESS,
+                            Stage = PipelineStepStage.Executing,
+                            Processed = donwloaded,
+                            Total = total
+                        });
                     }
                 },
                 context.CancellationToken);
@@ -57,16 +66,18 @@ namespace KTDL.Steps
             _logger.LogInformation($"Calling download album info method.");
             var infoDict = await _downloader.GetAlbumInfoAsync(
                 url,
-                async (donwloaded, total, itemType) =>
-                {
-                    if (context.OnProgress != null)
-                    {
-                        // TODO: Implement user inform
-                    }
-                },
                 context.CancellationToken);
 
             MapTwoDict(context.Data, infoDict);
+
+            if (context.OnProgress != null)
+            {
+                await context.OnProgress(new ProgressInfo
+                {
+                    Message = UserNotificationMessages.DOWNLOAD_FINISHED,
+                    Stage = PipelineStepStage.Completed,
+                });
+            }
         }
 
         private void MapTwoDict(Dictionary<string, object> first, Dictionary<string, string> second)

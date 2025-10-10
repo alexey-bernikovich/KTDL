@@ -5,11 +5,10 @@
         Task<List<string>> DownloadAlbumFilesAsync(
             string url,
             string ouptputDir,
-            Func<int, int, string, Task> onProgress,
+            Func<int, int, Task> onProgress,
             CancellationToken cancellationToken);
         Task<Dictionary<string, string>> GetAlbumInfoAsync(
             string url,
-            Func<int, int, string, Task> onProgress,
             CancellationToken cancellationToken);
         Task<string> GetAlbumCoverAsync(
             string url,

@@ -1,6 +1,7 @@
-﻿using KTDL.Common;
+﻿using KTDL.Common.StringConst;
 using KTDL.Orchestrator;
 using KTDL.Pipeline;
+using KTDL.UserCommunication;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot.Polling;
@@ -14,6 +15,7 @@ namespace KTDL
         private IConfiguration _configuration;
         private WTelegram.Bot _bot;
         private JobPipelineOrchestrator _orchestrator;
+        private UserNotification _userNotification;
 
         public BotController(ILoggerFactory loggerFactory, IConfiguration configuration,
             WTelegram.Bot bot, JobPipelineOrchestrator orchestrator)
@@ -21,7 +23,8 @@ namespace KTDL
             _logger = loggerFactory.CreateLogger<BotController>();
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _bot = bot;
-            _orchestrator = orchestrator;            
+            _orchestrator = orchestrator;
+            _userNotification = new UserNotification(new int[] { 0, 25, 50, 90 });
 
             _bot.OnMessage += OnMessage;
             _bot.OnError += OnError;            
@@ -31,6 +34,11 @@ namespace KTDL
         private async Task TesLinkHandle(WTelegram.Types.Message msg, string url)
         {
             _logger.LogInformation("Recived task for {Username} - {Url}.", msg.From.Username, url);
+            WTelegram.Types.Message updateMessage = await 
+                _bot.SendMessage(msg.Chat, "Job started. Please wait :)", replyParameters: msg);
+
+            _userNotification.AddMessage(updateMessage.Id);
+
             var context = new PipelineContext
             {
                 UserId = msg.From.Id,
@@ -38,8 +46,11 @@ namespace KTDL
 
                 OnProgress = async (status) =>
                 {
-                    _logger.LogInformation($"{status}.");
-                    //await _bot.SendMessage(msg.Chat, status, replyParameters: msg);
+                    string? updatedMessage = null;
+                    if(_userNotification.TryUpdateMessage(status, updateMessage.Id, out updatedMessage))
+                    {
+                        await _bot.EditMessageText(msg.Chat, updateMessage.Id, updatedMessage);
+                    }
                 },
 
                 OnCompleted = async (result) =>
@@ -68,8 +79,34 @@ namespace KTDL
                         }
 
                         _logger.LogInformation("Sending an archive {Path} to {Username}...", archivePath, msg.From.Username);
+
+                        var progressInfo = new Common.ProgressInfo
+                        {
+                            Message = UserNotificationMessages.UPLOADING_STARTED,
+                            Stage = Common.PipelineStepStage.Initialized
+                        };
+
+                        string? updatedMessage = _userNotification.GetUpdateMessage(progressInfo, updateMessage.Id);
+                        if (updatedMessage is not null)
+                        {
+                            await _bot.EditMessageText(msg.Chat, updateMessage.Id, updatedMessage);
+                        }
+
                         await SendFileAsync(_bot, msg, archivePath,
                             albumTitle, albumYear, imagePath);
+
+                        progressInfo.Message = UserNotificationMessages.UPLOADING_FINISHED;
+                        progressInfo.Stage = Common.PipelineStepStage.Completed;
+
+                        updatedMessage = _userNotification.GetUpdateMessage(progressInfo, updateMessage.Id);
+                        if (updatedMessage is not null)
+                        {
+                            await _bot.EditMessageText(msg.Chat, updateMessage.Id, updatedMessage);
+                        }
+
+                        _userNotification.RemoveMessage(updateMessage.Id);
+                        _bot.DeleteMessages(msg.Chat, new int[] { updateMessage.Id });
+                        
                         _logger.LogInformation("Archive {Path} was sent to {Username}!", archivePath, msg.From.Username);
                     }
                 }
@@ -81,9 +118,7 @@ namespace KTDL
                 //@"https://downloads.khinsider.com/game-soundtracks/album/city-life-windows-gamerip-2008"
                 //@"https://downloads.khinsider.com/game-soundtracks/album/marc-ecko-s-getting-up-contents-under-pressure-original-soundtrack-2006"
                 //@"https://downloads.khinsider.com/game-soundtracks/album/logo-commodore-64"
-                );
-            //await _bot.SendMessage(msg.Chat, "Job started. You can send /cancel to stop it.", replyParameters: msg);
-            await _bot.SendMessage(msg.Chat, "Job started. Please wait :)", replyParameters: msg);
+                );            
         }
 
         // TODO: double check the reults of asynchronous + job manager
@@ -102,7 +137,6 @@ namespace KTDL
             }
 
             _logger.LogInformation("Message: {Text}.", msg.Text); 
-
             var text = msg.Text.ToLower();
 
             switch (text)

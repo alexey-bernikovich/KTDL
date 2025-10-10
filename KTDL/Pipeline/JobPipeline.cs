@@ -55,7 +55,7 @@ namespace KTDL.Pipeline
 
                 if (pipelineContext.OnProgress != null)
                 {
-                    await pipelineContext.OnProgress("Operation was cancelled.");
+                    //await pipelineContext.OnProgress("Operation was cancelled.");
                 }
             }
             catch (Exception ex)
@@ -65,7 +65,7 @@ namespace KTDL.Pipeline
 
                 if (pipelineContext.OnProgress != null)
                 {
-                    await pipelineContext.OnProgress($"Error: {ex.Message}");
+                    //await pipelineContext.OnProgress($"Error: {ex.Message}");
                 }
             }
             finally // cleanup

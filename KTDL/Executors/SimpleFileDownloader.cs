@@ -1,6 +1,7 @@
 ﻿using HtmlAgilityPack;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Text.RegularExpressions;
 
@@ -26,12 +27,11 @@ namespace KTDL.Executors
         public async Task<List<string>> DownloadAlbumFilesAsync(
             string url,
             string outputDir,
-            Func<int, int, string, Task> onProgess,
+            Func<int, int, Task> onProgess,
             CancellationToken cancellationToken)
         {
             var songPageLinks = await GetFilesFromPage(url);
             var donwloadedFiles = new List<string>();
-
             int donwloaded = 0;
 
             await Parallel.ForEachAsync(songPageLinks,
@@ -54,11 +54,14 @@ namespace KTDL.Executors
                         await DownloadFileAsync(audioUrl, destPath);
                         donwloadedFiles.Add(destPath);
 
-                        _logger.LogInformation("Downloaded {File} of {Total} mp3 file(s) ({Percent}%)",
-                            ++donwloaded, songPageLinks.Count, 
+                        _logger.LogInformation("Downloaded {File} - {donwloaded} of {Total} mp3 file(s) ({Percent}%)",
+                        fileName, ++donwloaded, songPageLinks.Count, 
                             (songPageLinks.Count > 0 ? (donwloaded * 100 / songPageLinks.Count) : 0));
 
-                        await onProgess?.Invoke(donwloaded, songPageLinks.Count, "mp3");
+                        if (onProgess != null)
+                        {
+                            await onProgess.Invoke(donwloaded, songPageLinks.Count);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -98,7 +101,6 @@ namespace KTDL.Executors
 
         public async Task<Dictionary<string, string>> GetAlbumInfoAsync(
             string url,
-            Func<int, int, string, Task> onProgress,
             CancellationToken cancellationToken)
         {
             Dictionary<string, string> result = new Dictionary<string, string>();
@@ -122,7 +124,6 @@ namespace KTDL.Executors
                 result["AlbumTitle"] = title;
                 _logger.LogInformation("Downloaded {File} of {Total} info file(s)",
                     ++getCount, 2);
-                await onProgress?.Invoke(getCount, 2, "info");
             }
 
             string? year;
@@ -131,7 +132,6 @@ namespace KTDL.Executors
                 result["AlbumYear"] = year;
                 _logger.LogInformation("Downloaded {File} of {Total} info file(s)",
                     ++getCount, 2);
-                await onProgress?.Invoke(getCount, 2, "info");
             }
 
             return result;
@@ -259,15 +259,22 @@ namespace KTDL.Executors
 
         private async Task DownloadFileAsync(string fileUrl, string destPath)
         {
+            //var sw = Stopwatch.StartNew();
+
             using var req = new HttpRequestMessage(HttpMethod.Get, fileUrl);
             req.Headers.UserAgent.ParseAdd("Mozilla/5.0 (compatible; Downloader/1.0)");
             using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
             resp.EnsureSuccessStatusCode();
 
+            long? contentLength = resp.Content.Headers.ContentLength;
+
             using var contentStream = await resp.Content.ReadAsStreamAsync();
             using var fileStream = new FileStream(destPath, FileMode.Create, FileAccess.Write,
                 FileShare.None, 8192, useAsync: true);
             await contentStream.CopyToAsync(fileStream);
+
+            //sw.Stop();
+            //Console.WriteLine($"Downloaded {fileUrl} -> {destPath} ({contentLength ?? -1} bytes) in {sw.ElapsedMilliseconds}ms");
         }
 
         private string GetFileNameFromUrl(string url)

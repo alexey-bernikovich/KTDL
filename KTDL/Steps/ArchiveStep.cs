@@ -1,4 +1,5 @@
 ﻿using KTDL.Common;
+using KTDL.Common.StringConst;
 using KTDL.Executors;
 using KTDL.Pipeline;
 using Microsoft.Extensions.Logging;
@@ -18,9 +19,13 @@ namespace KTDL.Steps
 
         public async Task ExecuteAsync(PipelineContext context)
         {
-            if(context.OnCompleted != null)
+            if (context.OnProgress != null)
             {
-                await context.OnProgress("Archiving files...");
+                await context.OnProgress(new ProgressInfo
+                {
+                    Message = UserNotificationMessages.ARCHIVING_STARTED,
+                    Stage = PipelineStepStage.Initialized
+                });
             }
 
             var archiveName = $"{context.WorkflowId}.zip";
@@ -31,10 +36,34 @@ namespace KTDL.Steps
 
             var archivePath = await _archiver.CreateArchiveAsync(
                 context.TempDirectory, 
-                archiveName, 
+                archiveName,
+                async (archived, total) =>
+                {
+                    _logger.LogInformation("Archived {File} of {Total} file(s) ({Percent}%)",
+                            archived, total, (total > 0 ? (archived * 100 / total) : 0));
+                    if (context.OnProgress != null)
+                    {
+                        await context.OnProgress(new ProgressInfo
+                        {
+                            Message = UserNotificationMessages.ARCHIVING_PROCESS,
+                            Stage = PipelineStepStage.Executing,
+                            Processed = archived,
+                            Total = total
+                        });
+                    }
+                },
                 context.CancellationToken);
 
             context.Data[PipelineContextDataNames.ARCHIVE_PATH] = archivePath;
+
+            if (context.OnProgress != null)
+            {
+                await context.OnProgress(new ProgressInfo
+                {
+                    Message = UserNotificationMessages.ARCHIVING_FINISHED,
+                    Stage = PipelineStepStage.Completed,
+                });
+            }
         }
     }
 }

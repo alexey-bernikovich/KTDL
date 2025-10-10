@@ -16,7 +16,8 @@ namespace KTDL.Executors
         // TODO: cancellationToken is not used - fix this
         public async Task<string> CreateArchiveAsync(
             string sourceDir, 
-            string archiveName, 
+            string archiveName,
+            Func<int, int, Task> onProgess,
             CancellationToken cancellationToken)
         {
             string safeArchiveName = MakeFileNameSafe(archiveName);
@@ -34,6 +35,10 @@ namespace KTDL.Executors
                 {
                     zip.CreateEntryFromFile(file, Path.GetFileName(file), _compressionLevel);
                     _logger.LogInformation("Archived {File} file. ({Current}/{Count})", file, ++archivedCount, files.Count);
+                    if (onProgess != null)
+                    {
+                        await onProgess.Invoke(archivedCount, files.Count);
+                    }
                 }
             }
             _logger.LogInformation("Archive size: {Size:F2} MB.", new FileInfo(archivePath).Length / 1024.0 / 1024.0);

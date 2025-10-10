@@ -1,4 +1,6 @@
-﻿namespace KTDL.Pipeline
+﻿using KTDL.Common;
+
+namespace KTDL.Pipeline
 {
     internal class PipelineContext
     {
@@ -9,7 +11,7 @@
         public CancellationToken CancellationToken { get; set; }
         public Dictionary<string, object> Data { get; set; } = new Dictionary<string, object>();
 
-        public Func<string, Task> OnProgress { get; set; }
+        public Func<ProgressInfo, Task> OnProgress { get; set; }
         public Func<PipelineResult, Task> OnCompleted { get; set; }
         public Func<long, PipelineResult, Task> OnFinished { get; set; }
     }

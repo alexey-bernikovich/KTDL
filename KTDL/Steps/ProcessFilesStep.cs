@@ -1,4 +1,4 @@
-﻿using KTDL.Common;
+﻿using KTDL.Common.StringConst;
 using KTDL.Executors;
 using KTDL.Pipeline;
 
@@ -26,7 +26,7 @@ namespace KTDL.Steps
 
             if(context.OnProgress != null)
             {
-                await context.OnProgress("Processing files...");
+                //await context.OnProgress("Processing files...");
             }
 
             int processedCount = 0;
@@ -37,7 +37,7 @@ namespace KTDL.Steps
 
                 if (context.OnProgress != null)
                 {
-                    await context.OnProgress($"Processed {processedCount}/{files.Count} files.");
+                    //await context.OnProgress($"Processed {processedCount}/{files.Count} files.");
                 }
             }
         }

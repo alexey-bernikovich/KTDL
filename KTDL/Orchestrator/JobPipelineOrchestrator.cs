@@ -1,4 +1,4 @@
-﻿using KTDL.Common;
+﻿using KTDL.Common.StringConst;
 using KTDL.Executors;
 using KTDL.Jobs;
 using KTDL.Pipeline;

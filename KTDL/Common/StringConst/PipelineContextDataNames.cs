@@ -1,4 +1,4 @@
-﻿namespace KTDL.Common
+﻿namespace KTDL.Common.StringConst
 {
     internal static class PipelineContextDataNames
     {

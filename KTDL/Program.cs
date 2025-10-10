@@ -29,12 +29,11 @@ var logger = loggerFactory.CreateLogger<Program>();
 
 try
 {
-    JobPipelineOrchestrator orchestrator = new JobPipelineOrchestrator(loggerFactory, configuration);
-
     BotClient client;
     client = new BotClient(loggerFactory, configuration);
     client.Connect().Wait();
 
+    JobPipelineOrchestrator orchestrator = new JobPipelineOrchestrator(loggerFactory, configuration);
     orchestrator.StartWorkflow();
 
     BotController botController = new BotController(loggerFactory, configuration, client.TelegramBot, orchestrator);
